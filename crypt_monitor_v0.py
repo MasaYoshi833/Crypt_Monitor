@@ -43,8 +43,10 @@ EXCHANGE_CHOICES = {
 col1, col2 = st.columns([2, 1])
 with col1:
     symbol_input = st.text_input("銘柄（ccxt形式で入力）例: BTC/JPY, BTC/USDT, ETH/USD", value="BTC/JPY")
-    selected_exchanges_ui = st.multiselect("取引所を複数選択", options=list(EXCHANGE_CHOICES.keys()),
-                                           default=["bitFlyer (bitflyer)", "binance (binance)"])
+    selected_exchanges_ui = st.multiselect("取引所を複数選択",
+                            options=list(EXCHANGE_CHOICES.keys()),
+                            default=["bitflyer", "binance"])
+
 with col2:
     samples = st.number_input("サンプリング回数（過去データ点数）", min_value=1, max_value=500, value=60)
     interval = st.number_input("サンプリング間隔（秒） — if using live tickers", min_value=0.5, max_value=60.0, value=1.0, step=0.5)
