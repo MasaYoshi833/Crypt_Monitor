@@ -11,7 +11,7 @@ import pandas as pd
 import time
 import plotly.express as px
 
-st.set_page_config(page_title="📊暗号資産取引所モニター（デモ）")
+st.set_page_config(page_title="📊暗号資産価格チャート（デモ）")
 
 # ==========================
 # API取得関数
@@ -44,7 +44,7 @@ def fetch_gmo(symbol="BTC_JPY"):
 # ==========================
 # Streamlit UI
 # ==========================
-st.title("📊暗号資産取引所モニター（デモ）")
+st.title("📊暗号資産価格チャート（デモ）")
 
 symbol = st.selectbox("銘柄を選択してください", ["BTC/JPY", "ETH/JPY", "XRP/JPY"])
 
