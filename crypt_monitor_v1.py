@@ -11,7 +11,7 @@ import pandas as pd
 import time
 import plotly.express as px
 
-st.set_page_config(page_title="暗号資産取引所モニター（デモ）", layout="wide")
+st.set_page_config(page_title="暗号資産取引所モニター", layout="wide")
 
 # ==========================
 # API取得関数
@@ -81,24 +81,12 @@ def fetch_kraken(symbol="XXBTZUSD"):
     except:
         return None
 
-# Binance 過去データ取得（例: 1h, 1d）
-def fetch_binance_history(symbol="BTCUSDT", interval="1h", limit=500):
-    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
-    res = requests.get(url).json()
-    df = pd.DataFrame(res, columns=[
-        "time", "open", "high", "low", "close", "volume",
-        "close_time", "qav", "trades", "tb_base", "tb_quote", "ignore"
-    ])
-    df["time"] = pd.to_datetime(df["time"], unit="ms")
-    df["close"] = df["close"].astype(float)
-    return df[["time", "close"]]
-
 # ==========================
 # Streamlit UI
 # ==========================
-st.title("暗号資産取引所モニター")
+st.title("暗号資産取引所モニター（リアルタイム）")
 
-symbol = st.selectbox("銘柄を選択してください", ["BTC/JPY", "ETH/JPY", "XRP/JPY", "LTC/JPY", "BCH/JPY"])
+symbol = st.selectbox("銘柄を選択してください", ["BTC/JPY", "ETH/JPY", "XRP/JPY"])
 
 EXCHANGES = {
     "bitFlyer": fetch_bitflyer,
@@ -117,63 +105,28 @@ selected_exchanges = st.multiselect(
     default=["bitFlyer", "Coincheck", "GMOコイン"]
 )
 
-# 過去データの切替
-tabs = st.tabs(["1時間", "1日", "1週間", "1か月", "1年"])
-
-# ==========================
-# 過去データ（Binanceのみ）
-# ==========================
-with tabs[0]:
-    df_bin = fetch_binance_history("BTCUSDT", "1m", 60)
-    fig = px.line(df_bin, x="time", y="close", title="Binance BTC/USDT - 過去1時間")
-    fig.update_layout(yaxis=dict(rangemode="tozero"))
-    st.plotly_chart(fig, use_container_width=True)
-
-with tabs[1]:
-    df_bin = fetch_binance_history("BTCUSDT", "1h", 24)
-    fig = px.line(df_bin, x="time", y="close", title="Binance BTC/USDT - 過去1日")
-    fig.update_layout(yaxis=dict(rangemode="tozero"))
-    st.plotly_chart(fig, use_container_width=True)
-
-with tabs[2]:
-    df_bin = fetch_binance_history("BTCUSDT", "1h", 24*7)
-    fig = px.line(df_bin, x="time", y="close", title="Binance BTC/USDT - 過去1週間")
-    fig.update_layout(yaxis=dict(rangemode="tozero"))
-    st.plotly_chart(fig, use_container_width=True)
-
-with tabs[3]:
-    df_bin = fetch_binance_history("BTCUSDT", "1d", 30)
-    fig = px.line(df_bin, x="time", y="close", title="Binance BTC/USDT - 過去1か月")
-    fig.update_layout(yaxis=dict(rangemode="tozero"))
-    st.plotly_chart(fig, use_container_width=True)
-
-with tabs[4]:
-    df_bin = fetch_binance_history("BTCUSDT", "1d", 365)
-    fig = px.line(df_bin, x="time", y="close", title="Binance BTC/USDT - 過去1年")
-    fig.update_layout(yaxis=dict(rangemode="tozero"))
-    st.plotly_chart(fig, use_container_width=True)
-
-# ==========================
-# リアルタイム（選択取引所）
-# ==========================
-st.subheader("リアルタイム価格モニター（5秒更新）")
+st.subheader("リアルタイム価格モニター（10秒更新）")
 
 if st.button("開始"):
     prices = {ex: [] for ex in selected_exchanges}
     timestamps = []
     chart_area = st.empty()
 
-    for i in range(60):  # 約5分間
+    for i in range(60):  # 約10分間
         row = {}
         for ex in selected_exchanges:
             price = EXCHANGES[ex]()  # API呼び出し
             row[ex] = price
             prices[ex].append(price)
-        timestamps.append(pd.Timestamp.now())
+        timestamps.append(pd.Timestamp.now(tz="Asia/Tokyo"))
 
         df = pd.DataFrame(prices, index=timestamps)
         fig = px.line(df, x=df.index, y=df.columns, title=f"{symbol} 各取引所の価格推移")
-        fig.update_layout(yaxis=dict(rangemode="tozero"))
+        fig.update_layout(
+            yaxis=dict(rangemode="normal"),  # 初期表示は各価格の差をそのまま
+            xaxis_title="時間（日本時間）",
+            yaxis_title="価格"
+        )
 
         chart_area.plotly_chart(fig, use_container_width=True)
-        time.sleep(5)
+        time.sleep(10)
