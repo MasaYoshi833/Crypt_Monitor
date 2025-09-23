@@ -83,8 +83,8 @@ if st.button("開始"):
         if not latest_prices.empty:
             avg_price = latest_prices.mean()
             for ex, price in latest_prices.items():
-                if price is not None and abs(price - avg_price) / avg_price > 0.03:
-                    alert_area.warning(f"⚠️ {ex} の価格が平均から3%以上乖離: {price:,.0f} 円")
+                if price is not None and abs(price - avg_price) / avg_price > 0.001:
+                    alert_area.warning(f"⚠️ {ex} の価格が平均から0.1%以上乖離: {price:,.0f} 円")
 
         # ==== グラフ表示 ====
         fig = px.line(df, x=df.index, y=df.columns, title=f"{symbol} 各取引所の価格推移")
