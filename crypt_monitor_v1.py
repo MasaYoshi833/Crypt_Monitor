@@ -8,125 +8,90 @@ Created on Tue Sep 23 13:10:44 2025
 import streamlit as st
 import requests
 import pandas as pd
-import time
 import plotly.express as px
+from datetime import datetime, timezone, timedelta
+import time
 
-st.set_page_config(page_title="暗号資産取引所モニター", layout="wide")
+st.set_page_config(page_title="Crypto Monitor", layout="wide")
 
-# ==========================
-# API取得関数
-# ==========================
-def fetch_bitflyer(symbol="BTC_JPY"):
-    try:
-        url = f"https://api.bitflyer.com/v1/ticker?product_code={symbol}"
-        res = requests.get(url).json()
-        return res.get("ltp")
-    except:
-        return None
-
-def fetch_coincheck(symbol="btc_jpy"):
-    try:
-        url = "https://coincheck.com/api/ticker"
-        res = requests.get(url).json()
-        return float(res.get("last"))
-    except:
-        return None
-
-def fetch_gmo(symbol="BTC_JPY"):
-    try:
-        url = f"https://api.coin.z.com/public/v1/ticker?symbol={symbol}"
-        res = requests.get(url).json()
-        return float(res["data"][0]["last"])
-    except:
-        return None
-
-def fetch_zaif(symbol="btc_jpy"):
-    try:
-        url = f"https://api.zaif.jp/api/1/ticker/{symbol}"
-        res = requests.get(url).json()
-        return float(res.get("last"))
-    except:
-        return None
-
-def fetch_liquid(symbol="5"):  # 5=BTC/JPY product_id
-    try:
-        url = f"https://api.liquid.com/products/{symbol}"
-        res = requests.get(url).json()
-        return float(res.get("last_traded_price"))
-    except:
-        return None
-
-def fetch_binance(symbol="BTCUSDT"):
-    try:
-        url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
-        res = requests.get(url).json()
-        return float(res.get("price"))
-    except:
-        return None
-
-def fetch_bybit(symbol="BTCUSDT"):
-    try:
-        url = f"https://api.bybit.com/v5/market/tickers?category=spot&symbol={symbol}"
-        res = requests.get(url).json()
-        return float(res["result"]["list"][0]["lastPrice"])
-    except:
-        return None
-
-def fetch_kraken(symbol="XXBTZUSD"):
-    try:
-        url = f"https://api.kraken.com/0/public/Ticker?pair={symbol}"
-        res = requests.get(url).json()
-        pair = list(res["result"].keys())[0]
-        return float(res["result"][pair]["c"][0])
-    except:
-        return None
-
-# ==========================
-# Streamlit UI
-# ==========================
-st.title("暗号資産取引所モニター（リアルタイム）")
-
-symbol = st.selectbox("銘柄を選択してください", ["BTC/JPY", "ETH/JPY", "XRP/JPY"])
-
+# ===== 各取引所のAPI設定 =====
 EXCHANGES = {
-    "bitFlyer": fetch_bitflyer,
-    "Coincheck": fetch_coincheck,
-    "GMOコイン": fetch_gmo,
-    "Zaif": fetch_zaif,
-    "Liquid": fetch_liquid,
-    "Binance(USDT)": fetch_binance,
-    "Bybit(USDT)": fetch_bybit,
-    "Kraken(USD)": fetch_kraken,
+    "bitFlyer": {
+        "url": "https://api.bitflyer.com/v1/ticker?product_code=BTC_JPY",
+        "field": "ltp",
+    },
+    "GMO Coin": {
+        "url": "https://api.coin.z.com/public/v1/ticker?symbol=BTC_JPY",
+        "field": "data",
+    },
+    "Coincheck": {
+        "url": "https://coincheck.com/api/ticker",
+        "field": "last",
+    }
 }
 
-selected_exchanges = st.multiselect(
-    "参照する取引所を選択してください",
-    options=list(EXCHANGES.keys()),
-    default=["bitFlyer", "Coincheck", "GMOコイン"]
+# ===== データ取得関数 =====
+def fetch_price(exchange_name, config):
+    try:
+        r = requests.get(config["url"], timeout=5)
+        data = r.json()
+        if exchange_name == "bitFlyer":
+            return data["ltp"]
+        elif exchange_name == "GMO Coin":
+            return float(data["data"][0]["last"])
+        elif exchange_name == "Coincheck":
+            return data["last"]
+    except Exception as e:
+        return None
+
+# ===== メイン処理 =====
+st.title("📊 暗号資産取引所モニター（BTC/JPY）")
+
+# 保存用セッションステート
+if "price_history" not in st.session_state:
+    st.session_state.price_history = []
+
+# 価格取得
+prices = {}
+for name, cfg in EXCHANGES.items():
+    prices[name] = fetch_price(name, cfg)
+
+# JSTタイムスタンプ
+jst = timezone(timedelta(hours=9))
+timestamp = datetime.now(jst).strftime("%Y-%m-%d %H:%M:%S")
+
+# データを履歴に追加
+st.session_state.price_history.append({"time": timestamp, **prices})
+
+# ===== 異常検知 =====
+alerts = []
+valid_prices = [p for p in prices.values() if p is not None]
+if valid_prices:
+    avg_price = sum(valid_prices) / len(valid_prices)
+    for name, price in prices.items():
+        if price is not None:
+            diff = (price - avg_price) / avg_price * 100
+            if abs(diff) >= 5:  # ±5%以上の乖離をアラート
+                alerts.append(f"⚠️ {name} の価格が平均比 {diff:.2f}% 乖離しています")
+
+if alerts:
+    st.error("\n".join(alerts))
+
+# ===== 表示 =====
+df = pd.DataFrame(st.session_state.price_history)
+
+st.subheader("最新価格")
+st.dataframe(df.tail(1).set_index("time"))
+
+# グラフ
+fig = px.line(df, x="time", y=df.columns[1:], title="取引所別 BTC/JPY 価格推移")
+fig.update_layout(
+    yaxis=dict(rangemode="tozero", title="価格（円）"),
+    xaxis_title="時間（JST）",
 )
+st.plotly_chart(fig, use_container_width=True)
 
-st.subheader("リアルタイム価格モニター（10秒更新）")
-
-if st.button("開始"):
-    prices = {ex: [] for ex in selected_exchanges}
-    timestamps = []
-    chart_area = st.empty()
-
-    for i in range(60):  # 約10分間
-        row = {}
-        for ex in selected_exchanges:
-            price = EXCHANGES[ex]()  # API呼び出し
-            row[ex] = price
-            prices[ex].append(price)
-        timestamps.append(pd.Timestamp.now(tz="Asia/Tokyo"))
-
-        df = pd.DataFrame(prices, index=timestamps)
-        fig = px.line(df, x=df.index, y=df.columns, title=f"{symbol} 各取引所の価格推移")
-        fig.update_layout(
-            yaxis=dict(rangemode="normal"),  # 初期表示は各価格の差をそのまま
-            xaxis_title="時間（日本時間）",
-            yaxis_title="価格"
-        )
-
-        chart_area.plotly_chart(fig, use_container_width=True)
-        time.sleep(10)
+# ===== 自動更新（5秒） =====
+st.write("⏳ 5秒ごとに自動更新します...")
+time.sleep(5)
+st.experimental_rerun()
