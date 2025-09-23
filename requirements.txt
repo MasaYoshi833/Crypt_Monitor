@@ -4,3 +4,6 @@ pandas
 numpy
 scikit-learn
 plotly
+requests
+matplotlib
+time
