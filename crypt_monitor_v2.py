@@ -11,7 +11,7 @@ import pandas as pd
 import time
 import plotly.express as px
 
-st.set_page_config(page_title="暗号資産取引所モニター", layout="wide")
+st.set_page_config(page_title="📊暗号資産取引所モニター（デモ）")
 
 # ==========================
 # API取得関数
@@ -44,7 +44,7 @@ def fetch_gmo(symbol="BTC_JPY"):
 # ==========================
 # Streamlit UI
 # ==========================
-st.title("暗号資産取引所モニター（リアルタイム）")
+st.title("📊暗号資産取引所モニター（デモ）")
 
 symbol = st.selectbox("銘柄を選択してください", ["BTC/JPY", "ETH/JPY", "XRP/JPY"])
 
@@ -89,7 +89,7 @@ if st.button("開始"):
         # ==== グラフ表示 ====
         fig = px.line(df, x=df.index, y=df.columns, title=f"{symbol} 各取引所の価格推移")
         fig.update_layout(
-            yaxis=dict(rangemode="tozero"),  # ズームアウト時に0円まで縮小可能
+            yaxis=dict(rangemode="normal"),
             xaxis_title="時間（日本時間）",
             yaxis_title="価格（円）"
         )
