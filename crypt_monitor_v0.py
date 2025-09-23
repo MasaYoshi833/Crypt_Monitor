@@ -6,18 +6,11 @@ Created on Tue Sep 23 10:43:18 2025
 """
 
 # app.py
-"""
-Streamlit app: 直接取引所の公開APIを叩いて複数取引所の同一銘柄価格を比較し、
-統計的異常（σ / 取引所間乖離）とIsolationForestによるML異常検知を行う。
--- Designed for Japanese domestic exchanges + Binance (global).
--- If an exchange API changes, update EXCHANGES dict (url / parser).
-"""
-
 import streamlit as st
 import requests
 import pandas as pd
 import time
-import matplotlib.pyplot as plt
+import plotly.express as px
 
 # ==========================
 # API取得関数（取引所ごと）
@@ -70,7 +63,6 @@ def fetch_binance(symbol="BTCUSDT"):
     except:
         return None
 
-
 # ==========================
 # Streamlit アプリ
 # ==========================
@@ -78,7 +70,6 @@ st.title("国内暗号資産取引所価格モニター")
 
 symbol = st.selectbox("銘柄を選択してください", ["BTC/JPY", "ETH/JPY"])
 
-# 取引所リスト
 EXCHANGES = {
     "bitFlyer": fetch_bitflyer,
     "Coincheck": fetch_coincheck,
@@ -94,14 +85,12 @@ selected_exchanges = st.multiselect(
     default=["bitFlyer", "Coincheck", "GMOコイン"]
 )
 
-# データ収集
 st.write("価格取得中...（5秒間隔で更新）")
 
 if st.button("実行"):
     prices = {ex: [] for ex in selected_exchanges}
     timestamps = []
 
-    progress = st.empty()
     chart_area = st.empty()
 
     for i in range(20):  # 20回（約100秒分）
@@ -115,12 +104,11 @@ if st.button("実行"):
         # DataFrameに変換
         df = pd.DataFrame(prices, index=timestamps)
 
-        # 可視化
-        fig, ax = plt.subplots(figsize=(10, 5))
-        df.plot(ax=ax)
-        ax.set_title(f"{symbol} 各取引所の価格推移")
-        ax.set_ylabel("価格")
-        chart_area.pyplot(fig)
+        # Plotlyで可視化（インタラクティブ）
+        fig = px.line(df, x=df.index, y=df.columns,
+                      title=f"{symbol} 各取引所の価格推移")
+        fig.update_layout(xaxis_title="時間", yaxis_title="価格")
 
-        progress.text(f"{i+1}/20 取得完了")
+        chart_area.plotly_chart(fig, use_container_width=True)
+
         time.sleep(5)
