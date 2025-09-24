@@ -68,7 +68,7 @@ if st.button("開始"):
     chart_area = st.empty()
     alert_area = st.empty()
 
-    for i in range(120):  # 約10分間
+    for i in range(600):  # 約10分間
         row = {}
         for ex in selected_exchanges:
             price = EXCHANGES[ex]()  # API呼び出し
@@ -96,4 +96,5 @@ if st.button("開始"):
 
         chart_area.plotly_chart(fig, use_container_width=True)
         time.sleep(1)
+
 
