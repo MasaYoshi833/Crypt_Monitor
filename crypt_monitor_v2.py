@@ -60,7 +60,7 @@ selected_exchanges = st.multiselect(
     default=["bitFlyer", "Coincheck", "GMOコイン"]
 )
 
-st.subheader("リアルタイム価格モニター（5秒更新）")
+st.subheader("リアルタイム価格モニター（毎秒更新）")
 
 if st.button("開始"):
     prices = {ex: [] for ex in selected_exchanges}
@@ -95,4 +95,5 @@ if st.button("開始"):
         )
 
         chart_area.plotly_chart(fig, use_container_width=True)
-        time.sleep(5)
+        time.sleep(1)
+
